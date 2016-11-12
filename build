@@ -1,0 +1,32 @@
+if [ ! -f build ]; then
+echo 'build must be run within its container folder' 1>&2
+exit 1
+fi
+
+CURDIR=`pwd`
+OLDGOPATH="$GOPATH"
+
+ALLGOPATH="$CURDIR"":""$OLDGOPATH"
+export GOPATH="$ALLGOPATH"
+
+# env GOOS=linux GOARCH=386 go build ./src/bee
+env GOOS=linux GOARCH=arm GOARM=7 go build ./src/bee
+# env GOOS=darwin GOARCH=386  go build ./src/bee
+
+export GOPATH="$OLDGOPATH"
+
+if [ $? -eq 0 ];
+then
+    echo 'upload'
+#sftp -oIdentityFile="$HOME/.ssh/vm_rsa" root@192.168.51.128 <<EOF 
+
+sftp -oIdentityFile="$HOME/.ssh/vm_rsa" mxyue@192.168.31.110 <<EOF 
+    put "$CURDIR""/bee" "/home/mxyue" 
+EOF
+fi
+
+
+
+
+
+echo 'finished'

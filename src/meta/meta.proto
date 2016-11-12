@@ -1,0 +1,82 @@
+syntax = "proto2";
+
+package meta;
+
+
+message Message {
+    enum Type {
+        TEXT = 0;
+        SESSION = 1;
+        CONTROL = 2;
+    }
+    required Type type = 1;
+    required string id = 2;
+    required string from = 3;
+    optional string fromAlias = 4 [default = ""];
+    required int64 timestamp = 5 [default = 0];
+    optional string text = 6;
+    message Session {
+        enum Type {
+            OFFER = 0;
+            ICE_CANDIDATE = 1;
+            REJECT = 2;
+            ANSWER = 3;
+            ANSWER_CONFIRM = 4;
+            RINGING = 5;
+            SHUTDOWN = 6;
+        }
+        required Type type = 1;
+        required string offererSessionId = 2;
+        optional string answererSessionId = 3;
+        message SessionDescription {
+            required string sdp = 1;
+            required string type = 2;
+        }
+        message Offer {
+            message IceServer {
+                required string url = 1;
+                required string username = 2;
+                required string credential = 3;
+            }
+            required SessionDescription sdp = 1;
+            repeated IceServer servers = 2;
+        }
+        message AnswerConfirm {
+            optional string error = 1;
+        }
+        message Answer {
+            required SessionDescription sdp = 1;
+        }
+        message IceCandidate {
+            required int32 label = 1;
+            required string id = 2;
+            required string candidate = 3;
+        }
+        message Reject {
+            optional string reason = 1;
+        }
+        oneof session_payloads { Offer offer = 4; AnswerConfirm answerConfirm = 5; Answer answer = 6; IceCandidate iceCandidate = 7; Reject reject = 8; }
+    }
+
+    message Control {
+        enum Type {
+            REQUEST = 0;
+            RESPONSE = 1;
+        }
+        required Type type = 1;
+        required string requestId = 2;
+        message Request {
+            optional int64 expiresAt = 1 [default = -1];
+            optional bool fireAndForget = 2 [default = false];
+            optional int64 issuedTimestamp = 3 [default = 0];
+            required string method = 4;
+            required string parameters = 5;
+            optional string signature = 6;
+        }
+        message Response {
+            required string response = 1;
+        }
+        oneof control_payloads { Request request = 3; Response response = 4; }
+    }
+    oneof payloads { Session session = 7; Control control = 8; }
+}
