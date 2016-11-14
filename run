@@ -20,7 +20,7 @@ if [ $? -eq 0 ];then
 fi
 
 #export GOPATH="$OLDGOPATH"
-#source ~/.bash_profile 
+source ~/.bash_profile 
 
 echo 'finished'
 

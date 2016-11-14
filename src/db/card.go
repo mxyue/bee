@@ -2,12 +2,12 @@ package db
 
 import (
 	"config"
-
 	"encoding/json"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/boltdb/bolt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type Card struct {
@@ -21,29 +21,61 @@ type Card struct {
 }
 
 func IsValidCard(wiegand_no string) bool {
-	count, err := db().C("cards").Find(bson.M{"wiegand_no": wiegand_no}).Count()
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
+		panic(err)
 	}
-	if count > 0 {
-		return true
-	} else {
-		return false
+	// 从只读事务中读取值.
+	var card Card
+	var present_flag bool
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_CARDS))
+		card_bt := b.Get([]byte(wiegand_no))
+		if len(card_bt) > 0 {
+			present_flag = true
+			err := json.Unmarshal(card_bt, &card)
+			fmt.Printf("The card username is: %s\n", card.UserName)
+			fmt.Printf("The card mobile is: %s\n", card.UserMobile)
+			if err != nil {
+				fmt.Println("json 解析错误：", err)
+			}
+		} else {
+			present_flag = false
+		}
+		return nil
+	}); err != nil {
+		fmt.Println("db查询错误：", err)
 	}
-
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println("db关闭出错：", err)
+	}
+	return present_flag
 }
-func FindCard(wiegand_no string) {
-	result := Card{}
-	db().C("cards").Find(bson.M{"wiegand_no": wiegand_no}).One(&result)
-	fmt.Println("Username:", result.UserName, result.UserMobile)
-}
 
-func CardCount() int {
-	count, err := db().C("cards").Count()
+func IsCardsPresent() bool {
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
+		panic(err)
 	}
-	return count
+	var count int
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_CARDS))
+		count = b.Stats().KeyN
+		fmt.Println("数据库卡数量：", count)
+		return nil
+	}); err != nil {
+		fmt.Println(err)
+	}
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
+	}
+	return count > 0
 }
 
 type CardData struct {
@@ -68,27 +100,45 @@ func GetRemoteCards() []Card {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println("card 数量：", len(data.Cards))
+	fmt.Println("服务端card 数量：", len(data.Cards))
 	return data.Cards
 }
 
-func AddCard(card Card) {
-	err := db().C("cards").Insert(card)
+func AddCards(cards []Card) {
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
-		fmt.Print("保存出错：", err)
+		fmt.Println(err)
+		panic(err)
+	}
+	fmt.Println("添加card数据")
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_CARDS))
+		for _, card := range cards {
+			enCard, err := json.Marshal(card)
+			fmt.Println("server 卡维根：", card.WiegandNo)
+			err = b.Put([]byte(card.WiegandNo), enCard)
+			if err != nil {
+				fmt.Print("保存出错：", err)
+			}
+		}
+		return nil
+	})
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func ClearCards() {
-	db().C("cards").RemoveAll(nil)
-}
-
-func AddCards(cards []Card) {
-	fmt.Println("添加卡数据")
-	for _, card := range cards {
-		err := db().C("cards").Insert(card)
-		if err != nil {
-			fmt.Print("保存出错：", err)
+func CardStart() {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			CardStart()
 		}
+	}()
+	if !IsCardsPresent() {
+		AddCards(GetRemoteCards())
 	}
 }

@@ -13,6 +13,7 @@ func OpenByCard(w http.ResponseWriter, r *http.Request) {
 	if db.IsValidCard(wiegandNo) {
 		fmt.Fprintf(w, "open success")
 	} else {
-		fmt.Println(w, "card not found")
+		fmt.Println("没有该卡数据")
+		fmt.Fprintf(w, "card not found")
 	}
 }

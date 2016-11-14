@@ -6,18 +6,25 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
-	"gopkg.in/mgo.v2"
+	"github.com/boltdb/bolt"
 	"time"
 )
 
-func db() *mgo.Database {
+const DB_PASSCODES = "passcodes"
+const DB_CARDS = "cards"
 
-	url := "mongodb://127.0.0.1:27017"
-	session, err := mgo.Dial(url)
+func init() {
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
+		panic(err)
 	}
-	return session.DB("bee")
+	db.Update(func(tx *bolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(DB_PASSCODES))
+		_, err = tx.CreateBucketIfNotExists([]byte(DB_CARDS))
+		return err
+	})
 }
 
 func getIdentifier() string {

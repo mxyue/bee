@@ -4,9 +4,10 @@ import (
 	"config"
 	"encoding/json"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
+	"github.com/boltdb/bolt"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type Passcode struct {
@@ -17,24 +18,53 @@ type Passcode struct {
 }
 
 func IsValidPasscode(number string) bool {
-	count, err := db().C("passcodes").Find(bson.M{"content": number}).Count()
+
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
+		panic(err)
 	}
-	if count > 0 {
-		return true
-	} else {
-		return false
+	var passwd string
+	// 从只读事务中读取值.
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_PASSCODES))
+		passwd = fmt.Sprintf("%s", b.Get([]byte("content")))
+		fmt.Printf("The value of 'passcode' is: %s\n", passwd)
+		return nil
+	}); err != nil {
+		fmt.Println(err)
 	}
-
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
+	}
+	return passwd == number
 }
 
-func PasscodeCount() int {
-	count, err := db().C("passcodes").Count()
+func IsPassCodePresent() bool {
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
+		panic(err)
 	}
-	return count
+	var passwd string
+	// 从只读事务中读取值.
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_PASSCODES))
+		passwd = fmt.Sprintf("%s", b.Get([]byte("content")))
+		return nil
+	}); err != nil {
+		fmt.Println(err)
+	}
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf(" passcode  present: %t\n", passwd != "")
+	fmt.Printf(" passcode : %s\n", passwd)
+	return passwd != ""
 }
 
 type PasscodeData struct {
@@ -63,23 +93,40 @@ func GetRemotePasscodes() []Passcode {
 	return data.Passcodes
 }
 
-func AddPasscode(passcode Passcode) {
-	err := db().C("passcodes").Insert(passcode)
+func AddPasscodes(passcodes []Passcode) {
+	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	defer db.Close()
 	if err != nil {
-		fmt.Print("保存出错：", err)
+		fmt.Println(err)
+		panic(err)
+	}
+	fmt.Println("添加密码数据")
+	db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(DB_PASSCODES))
+		for _, passcode := range passcodes {
+			fmt.Println(passcode.Content)
+			err := b.Put([]byte("content"), []byte(passcode.Content))
+			if err != nil {
+				fmt.Print("保存出错：", err)
+			}
+		}
+		return nil
+	})
+	// 关闭数据库释放锁
+	if err := db.Close(); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func ClearPasscodes() {
-	db().C("passcodes").RemoveAll(nil)
-}
-
-func AddPasscodes(passcodes []Passcode) {
-	fmt.Println("添加密码数据")
-	for _, passcode := range passcodes {
-		err := db().C("passcodes").Insert(passcode)
-		if err != nil {
-			fmt.Print("保存出错：", err)
+func PassCodeStart() {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			time.Sleep(2 * time.Second)
+			PassCodeStart()
 		}
+	}()
+	if !IsPassCodePresent() {
+		AddPasscodes(GetRemotePasscodes())
 	}
 }

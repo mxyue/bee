@@ -73,7 +73,7 @@ func sendResponse(from string, requestId string, message_control_response *meta.
 func Start() {
 	//create a ClientOptions struct setting the broker address, clientid, turn
 	//off trace output and set the default message handler
-	opts := MQTT.NewClientOptions().AddBroker("tcps://voip.didikon.com:1885")
+	opts := MQTT.NewClientOptions().AddBroker(fmt.Sprintf("tcps://%s:%s", config.MqttHost, config.MqttPort))
 	opts.SetClientID(fmt.Sprintf("%s", uuid.NewV4()))
 	opts.SetDefaultPublishHandler(onMessage)
 	opts.SetOnConnectHandler(onConnect)
@@ -86,7 +86,13 @@ func Start() {
 		ClientCAs:          x509.NewCertPool(),
 		InsecureSkipVerify: true,
 	})
-
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(err)
+			time.Sleep(5 * time.Second)
+			Start()
+		}
+	}()
 	//create and start a client using the above ClientOptions
 	c = MQTT.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {

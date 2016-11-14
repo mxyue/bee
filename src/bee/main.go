@@ -3,24 +3,19 @@ package main
 import (
 	"api"
 	"db"
-	"driver"
+	// "driver"
 	"fmt"
 	"mqtt_client"
 	"net/http"
 )
 
 func main() {
-	if db.CardCount() == 0 {
-		db.AddPasscodes(db.GetRemotePasscodes())
-	}
+	go db.PassCodeStart()
+	go db.CardStart()
+	go mqtt_client.Start()
 
-	mqtt_client.Start()
+	// driver.KeyStart()
 
-	if db.PasscodeCount() == 0 {
-		db.AddCards(db.GetRemoteCards())
-	}
-
-	driver.KeyStart()
 	fmt.Println("run in 9090")
 	err := http.ListenAndServe(":9090", api.Route())
 	if err != nil {
