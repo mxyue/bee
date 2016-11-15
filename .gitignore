@@ -1,4 +1,5 @@
 .DS_Store
+bolt.db
 .idea
 bee
 bin/
