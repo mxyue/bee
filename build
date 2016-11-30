@@ -6,26 +6,12 @@ fi
 CURDIR=`pwd`
 OLDGOPATH="$GOPATH"
 
-ALLGOPATH="$CURDIR"":""$OLDGOPATH"
-export GOPATH="$ALLGOPATH"
+export GOPATH="$CURDIR"
 
 # env GOOS=linux GOARCH=386 go build ./src/bee
 env GOOS=linux GOARCH=arm GOARM=7 go build ./src/bee
 # env GOOS=darwin GOARCH=386  go build ./src/bee
 
 export GOPATH="$OLDGOPATH"
-
-if [ $? -eq 0 ];
-then
-    echo 'upload'
-sftp -oIdentityFile="$HOME/.ssh/opi_rsa" root@192.168.1.11 <<EOF     
-    put "$CURDIR""/bee" "/root/device"     
-EOF
-
-fi
-
-
-
-
 
 echo 'finished'
