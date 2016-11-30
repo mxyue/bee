@@ -11,14 +11,13 @@ import (
 )
 
 type Passcode struct {
-	ValidTill int64  `json:"valid_till" bson:"valid_till"`
-	ValidFrom int64  `json:"valid_from" bson:"valid_from"`
-	Id        int32  `json:"user_id" bson:"user_id"`
-	Content   string `json:"passcode" bson:"content"`
+	ValidTill int64  `json:"valid_till"`
+	ValidFrom int64  `json:"valid_from"`
+	Id        int32  `json:"user_id"`
+	Content   string `json:"passcode"`
 }
 
 func IsValidPasscode(number string) bool {
-
 	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 	if err != nil {
@@ -62,8 +61,7 @@ func IsPassCodePresent() bool {
 	if err := db.Close(); err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf(" passcode  present: %t\n", passwd != "")
-	fmt.Printf(" passcode : %s\n", passwd)
+	fmt.Printf("-数据库门密码: %s\n", passwd)
 	return passwd != ""
 }
 
@@ -72,25 +70,30 @@ type PasscodeData struct {
 }
 
 func GetRemotePasscodes() []Passcode {
-
-	url := fmt.Sprintf("%s/passcodes?device_identifier=%s&signature=%s", config.Host, getIdentifier(), getSignature())
+	url := fmt.Sprintf("%s/passcodes?device_identifier=%s&signature=%s", config.Host, config.GetIdentifier(), config.GetSignature())
 	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
 	}
+	if resp.StatusCode == 200 {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println(err)
+		}
+		var data PasscodeData
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("passcode 数量：", len(data.Passcodes))
+		return data.Passcodes
+	} else {
+		fmt.Println("passcode 获取远程数据出错 code:", resp.StatusCode)
+		var passcodes []Passcode
+		return passcodes
+	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println(err)
-	}
-	var data PasscodeData
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println("passcode 数量：", len(data.Passcodes))
-	return data.Passcodes
 }
 
 func AddPasscodes(passcodes []Passcode) {
@@ -122,7 +125,7 @@ func PassCodeStart() {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(4 * time.Second)
 			PassCodeStart()
 		}
 	}()

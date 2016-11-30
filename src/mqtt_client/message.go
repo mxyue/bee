@@ -4,7 +4,6 @@ import (
 	"config"
 	"crypto/tls"
 	"crypto/x509"
-	"driver"
 	"fmt"
 	MQTT "github.com/eclipse/paho.mqtt.golang"
 	"github.com/golang/protobuf/proto"
@@ -27,12 +26,27 @@ var onMessage MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 		fmt.Println("unmarshaling error: ", err)
 	}
 	requestId := msg_encoding.GetControl().GetRequestId()
-	fmt.Printf("RequestId: %s\n", requestId)
-
-	response := proto.String(fmt.Sprintf("{\"response\": %d }", time.Now().Unix()))
-	message_control_response := &meta.Message_Control_Response{Response: response}
-	sendResponse(msg_encoding.GetFrom(), requestId, message_control_response)
-	go driver.OpenDoor()
+	method := msg_encoding.GetControl().GetRequest().GetMethod()
+	params := msg_encoding.GetControl().GetRequest().GetParameters()
+	fmt.Printf(" Method: %s ,RequestId: %s \n Params: %s\n", method, requestId, params)
+	err = nil
+	switch method {
+	case "openGate":
+		err = openGate()
+	case "cardOperation":
+		err = cardOperation([]byte(params))
+	case "passcodeOperation":
+		err = passcodeOperation([]byte(params))
+	case "ping":
+		fmt.Println("ping test")
+	case "reboot":
+		fmt.Println("reboot")
+	}
+	if err == nil {
+		response := proto.String(fmt.Sprintf("{\"response\": %d }", time.Now().Unix()))
+		message_control_response := &meta.Message_Control_Response{Response: response}
+		sendResponse(msg_encoding.GetFrom(), requestId, message_control_response)
+	}
 }
 
 var onConnect MQTT.OnConnectHandler = func(client MQTT.Client) {
@@ -41,6 +55,23 @@ var onConnect MQTT.OnConnectHandler = func(client MQTT.Client) {
 var disConnect MQTT.ConnectionLostHandler = func(client MQTT.Client, err error) {
 	fmt.Println("错误：", err)
 	fmt.Println("断开 mqtt服务器")
+	connect(client)
+}
+
+func connect(client MQTT.Client) {
+	var flag = true
+	for flag {
+		if token := client.Connect(); token.Wait() && token.Error() == nil {
+			flag = false
+			if token := c.Subscribe("/clients/"+identifier, 0, nil); token.Wait() && token.Error() != nil {
+				fmt.Println(token.Error())
+				os.Exit(1)
+			}
+		} else {
+			fmt.Println("重新连接出错")
+		}
+		time.Sleep(5 * time.Second)
+	}
 }
 
 // publish response message
@@ -71,8 +102,6 @@ func sendResponse(from string, requestId string, message_control_response *meta.
 }
 
 func Start() {
-	//create a ClientOptions struct setting the broker address, clientid, turn
-	//off trace output and set the default message handler
 	opts := MQTT.NewClientOptions().AddBroker(fmt.Sprintf("tcps://%s:%s", config.MqttHost, config.MqttPort))
 	opts.SetClientID(fmt.Sprintf("%s", uuid.NewV4()))
 	opts.SetDefaultPublishHandler(onMessage)
@@ -80,29 +109,13 @@ func Start() {
 	opts.SetConnectionLostHandler(disConnect)
 	opts.SetUsername(identifier)
 	opts.SetPassword(secret)
+	opts.SetAutoReconnect(false)
 	opts.SetTLSConfig(&tls.Config{
 		RootCAs:            x509.NewCertPool(),
 		ClientAuth:         tls.NoClientCert,
 		ClientCAs:          x509.NewCertPool(),
 		InsecureSkipVerify: true,
 	})
-	defer func() {
-		if err := recover(); err != nil {
-			fmt.Println(err)
-			time.Sleep(5 * time.Second)
-			Start()
-		}
-	}()
-	//create and start a client using the above ClientOptions
 	c = MQTT.NewClient(opts)
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-	//subscribe to the topic /go-mqtt/sample and request messages to be delivered
-	//at a maximum qos of zero, wait for the receipt to confirm the subscription
-	if token := c.Subscribe("/clients/"+identifier, 0, nil); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
-		os.Exit(1)
-	}
-
+	connect(c)
 }

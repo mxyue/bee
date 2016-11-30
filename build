@@ -18,11 +18,9 @@ export GOPATH="$OLDGOPATH"
 if [ $? -eq 0 ];
 then
     echo 'upload'
-#sftp -oIdentityFile="$HOME/.ssh/vm_rsa" root@192.168.51.128 <<EOF 
-
-# sftp -oIdentityFile="$HOME/.ssh/vm_rsa" mxyue@192.168.31.110 <<EOF 
-#    put "$CURDIR""/bee" "/home/mxyue" 
-# EOF
+sftp -oIdentityFile="$HOME/.ssh/opi_rsa" root@192.168.1.11 <<EOF     
+    put "$CURDIR""/bee" "/root/device"     
+EOF
 
 fi
 

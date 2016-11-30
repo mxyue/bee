@@ -1,10 +1,6 @@
 package db
 
 import (
-	"config"
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/base64"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"time"
@@ -25,17 +21,4 @@ func init() {
 		_, err = tx.CreateBucketIfNotExists([]byte(DB_CARDS))
 		return err
 	})
-}
-
-func getIdentifier() string {
-	var deviceIdentifier = fmt.Sprintf("%s:%d", config.Identifier, time.Now().Unix())
-	return deviceIdentifier
-}
-
-func getSignature() string {
-	key := []byte(config.Secret)
-	mac := hmac.New(sha1.New, key)
-	mac.Write([]byte(getIdentifier()))
-	signature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-	return signature
 }
