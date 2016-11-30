@@ -7,8 +7,7 @@ fi
 CURDIR=`pwd`
 OLDGOPATH="$GOPATH"
 
-ALLGOPATH=${CURDIR}":"${OLDGOPATH}
-export GOPATH="$ALLGOPATH"
+export GOPATH="$CURDIR"
 
 gofmt -w src
 
