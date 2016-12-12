@@ -20,7 +20,7 @@ type Card struct {
 	WiegandNo  string `json:"wiegand_no" bson:"wiegand_no"`
 }
 
-func IsValidCard(wiegand_no string) bool {
+func ValidCard(wiegand_no string) (Card, bool) {
 	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 	if err != nil {
@@ -52,7 +52,7 @@ func IsValidCard(wiegand_no string) bool {
 	if err := db.Close(); err != nil {
 		fmt.Println("db关闭出错：", err)
 	}
-	return present_flag
+	return card, present_flag
 }
 
 func IsCardsPresent() bool {

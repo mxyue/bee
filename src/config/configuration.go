@@ -23,7 +23,7 @@ var Secret string
 func init() {
 	err := readLines(configPath())
 	if err != nil {
-		fmt.Println("错误：", err)
+		fmt.Println("读取configs.txt错误：", err)
 	}
 	Identifier = txtConfigs["identifier"]
 	Secret = txtConfigs["secret"]
