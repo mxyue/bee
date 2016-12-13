@@ -56,6 +56,26 @@ func CreateCardAccessLog(card Card) error {
 	err = saveAccessLog(accessLog)
 	return err
 }
+func CreatePasswordAccessLog(code string) error {
+	deviceInfo, err := GetDeviceInfo()
+	if err != nil {
+		fmt.Println("err:", err)
+	}
+	accessLog := AccessLog{
+		AccessTimestamp: time.Now().Unix(),
+		AccessType:      "password",
+		Door:            deviceInfo.DoorName,
+		DoorId:          deviceInfo.DoorId,
+		Unit:            deviceInfo.UnitName,
+		UnitId:          deviceInfo.UnitId,
+		Building:        deviceInfo.BuildingName,
+		BuildingId:      deviceInfo.BuildingId,
+		Compound:        deviceInfo.CompoundName,
+		CompoundId:      deviceInfo.CompoundId,
+	}
+	err = saveAccessLog(accessLog)
+	return err
+}
 
 func saveAccessLog(accessLog AccessLog) error {
 	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})

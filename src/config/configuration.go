@@ -52,6 +52,9 @@ func readLines(path string) error {
 }
 
 func setConf(text string) {
+	if strings.HasPrefix(text, "#") {
+		return
+	}
 	temp_arr := strings.Split(text, "=")
 	if len(temp_arr) == 2 {
 		txtConfigs[temp_arr[0]] = temp_arr[1]
