@@ -25,6 +25,8 @@ func cardOperation(strParams []byte) error {
 		err = db.AddCards(cardBody.Cards)
 	} else if cardBody.Operation == "remove" {
 		err = db.DeleteCards(cardBody.Cards)
+	} else if cardBody.Operation == "batch" {
+		go db.ResetCards()
 	}
 	return err
 }
@@ -33,9 +35,13 @@ func passcodeOperation(strParams []byte) error {
 	var passcodeBody PasscodeBody
 	err := json.Unmarshal(strParams, &passcodeBody)
 	if passcodeBody.Operation == "replaceAll" {
-		db.AddPasscodes(passcodeBody.Passcodes)
+		err = db.AddPasscodes(passcodeBody.Passcodes)
+	} else if passcodeBody.Operation == "replace" {
+		err = db.AddPasscodes(passcodeBody.Passcodes)
+		if err == nil {
+			go db.DonePasscodesSync()
+		}
 	}
-
 	return err
 }
 

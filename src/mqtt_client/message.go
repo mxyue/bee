@@ -103,7 +103,7 @@ func sendResponse(from string, requestId string, message_control_response *meta.
 
 func Start() {
 	opts := MQTT.NewClientOptions().AddBroker(fmt.Sprintf("tcps://%s:%s", config.MqttHost, config.MqttPort))
-	opts.SetClientID(fmt.Sprintf("%s", uuid.NewV4()))
+	opts.SetClientID(fmt.Sprintf("%s:[1]:%s", identifier, uuid.NewV4()))
 	opts.SetDefaultPublishHandler(onMessage)
 	opts.SetOnConnectHandler(onConnect)
 	opts.SetConnectionLostHandler(disConnect)

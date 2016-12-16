@@ -145,6 +145,8 @@ func dealNumber(number int) {
 	first_step()
 }
 
+//上面是键盘输入逻辑
+
 func OpenDoor() {
 	rpio.Close()
 	if err := rpio.Open(); err != nil {

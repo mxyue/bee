@@ -96,14 +96,14 @@ func GetRemotePasscodes() []Passcode {
 
 }
 
-func AddPasscodes(passcodes []Passcode) {
+func AddPasscodes(passcodes []Passcode) error {
 	db, err := bolt.Open("bolt.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	defer db.Close()
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
 	}
-	fmt.Println("添加密码数据")
+	fmt.Println("修改密码数据")
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(DB_PASSCODES))
 		for _, passcode := range passcodes {
@@ -119,6 +119,19 @@ func AddPasscodes(passcodes []Passcode) {
 	if err := db.Close(); err != nil {
 		fmt.Println(err)
 	}
+	return err
+}
+
+func DonePasscodesSync() error {
+	client := &http.Client{}
+	url := fmt.Sprintf("%s/passcodes/done_passcodes_sync?device_identifier=%s&signature=%s", config.Host, config.GetIdentifier(), config.GetSignature())
+	req, err := http.NewRequest("PUT", url, nil)
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("更新服务器密码同步状态 code:", res.StatusCode)
+	return err
 }
 
 func PassCodeStart() {
@@ -131,5 +144,6 @@ func PassCodeStart() {
 	}()
 	if !IsPassCodePresent() {
 		AddPasscodes(GetRemotePasscodes())
+		go DonePasscodesSync()
 	}
 }

@@ -1,17 +1,14 @@
 package db
 
 import (
-	// "bytes"
 	"config"
 	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
-	// "io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
-	// "strings"
 	"time"
 )
 

@@ -11,9 +11,9 @@ import (
 )
 
 func main() {
+	go db.DeviceInfoStart()
 	go db.PassCodeStart()
 	go db.CardStart()
-	go db.DeviceInfoStart()
 	go mqtt_client.Start()
 	if config.InDevice {
 		go driver.KeyStart()

@@ -44,7 +44,7 @@ func AddDeviceInfo(info DeviceInfo) {
 	}
 	db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(DB_DEVICE_INFOS))
-		fmt.Println("添加设备信息", info.Name)
+		fmt.Println("更新设备信息", info.Name)
 		enInfo, err := json.Marshal(info)
 		err = b.Put([]byte(DEVICE_INFO_KEY), enInfo)
 		if err != nil {
