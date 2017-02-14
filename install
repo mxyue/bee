@@ -1,5 +1,11 @@
+CURDIR=`pwd`
+OLDGOPATH="$GOPATH"
+export GOPATH="$CURDIR"
+
 go get github.com/gorilla/mux
 go get github.com/boltdb/bolt/...
 go get github.com/eclipse/paho.mqtt.golang
 go get -u -v github.com/golang/protobuf/proto
 go get github.com/satori/go.uuid
+
+export GOPATH="$OLDGOPATH"
